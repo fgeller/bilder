@@ -18,3 +18,6 @@ run: build
 .PHONY: assets
 assets:
 	go run gen_assets.go
+
+test-loop:
+	ls !(gen_assets*).go | entr bash -O extglob -c 'go test !(gen_assets*).go |& tee quickfix'
