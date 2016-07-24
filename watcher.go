@@ -325,7 +325,7 @@ var (
                 <a href="/{{.Path}}" data-size="{{.Width}}x{{.Height}}">
                     <img src="/{{.ThumbPath}}" width="200" />
                 </a>
-                <figcaption>{{.Caption}}</figcaption>
+                <figcaption>{{.Caption}}&nbsp;</figcaption>
             </figure>
             {{end}}
         </div>
