@@ -5,22 +5,38 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"image"
 	"image/jpeg"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/nfnt/resize"
 )
 
+type imgDetails struct {
+	Thumb     string
+	Width     int
+	Height    int
+	Caption   string
+	Path      string
+	ThumbPath string
+}
+
+type dirDetails struct {
+	Title  string
+	Images []*imgDetails
+}
+
 type watcher struct {
 	dir     string
 	configs map[string]dirConfig
-	images  map[string]map[string]struct{}
+	images  map[string]map[string]*imgDetails
 }
 type dirConfig struct {
 	Title    string
@@ -28,41 +44,49 @@ type dirConfig struct {
 }
 
 var (
-	jpgRegexp       = regexp.MustCompile("(?i)^(.+)\\.(jpg|jpeg)$")
+	thumbRegexp     = regexp.MustCompile("(?i)^(.+)_thumb\\.(jpg|jpeg)$")
+	imageRegexp     = regexp.MustCompile("(?i)^(.+)\\.(jpg|jpeg)$")
 	dirConfigRegexp = regexp.MustCompile("(?i)^bilder.json$")
-	nada            = struct{}{}
 )
 
 func (w *watcher) start() {
 	for {
-		select {
-		case <-time.After(10 * time.Second):
-			w.reloadContents()
-			w.ensureThumbs()
-			w.writeIndexes()
-		}
+		w.reloadContents()
+		w.ensureThumbs()
+		w.writeIndexes()
+		<-time.After(10 * time.Second)
 	}
 }
 
+type byImgName []*imgDetails
+
+func (a byImgName) Len() int           { return len(a) }
+func (a byImgName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byImgName) Less(i, j int) bool { return a[i].Path < a[j].Path }
+
 func (w *watcher) writeIndexes() {
 	tmpl := template.Must(template.New("dirIndex").Parse(dirIndexTempl))
-	for d, fs := range w.images {
-		is := map[string]string{}
-		for fn := range fs {
-			matches := jpgRegexp.FindAllStringSubmatch(fn, -1)
-			base, ending := matches[0][1], matches[0][2]
-			isThumb := strings.HasSuffix(base, "_thumb")
-			if isThumb {
-				continue
-			}
-			ip := strings.Join([]string{"b", d, fn}, "/")
-			tp := strings.Join([]string{"b", d, base + "_thumb." + ending}, "/")
-			is[ip] = tp
+	for d, is := range w.images {
+		p := filepath.Join(w.dir, d, "index.html")
+		var ids []*imgDetails
+		for _, id := range is {
+			ids = append(ids, id)
+		}
+		sort.Sort(byImgName(ids))
+		title := d
+		if cfg, exists := w.configs[d]; exists && cfg.Title != "" {
+			title = cfg.Title
+		}
+		dd := dirDetails{
+			Title:  title,
+			Images: ids,
+		}
+		var buf bytes.Buffer
+		if err := tmpl.Execute(&buf, dd); err != nil {
+			log.Printf("Failed to execute index template for %#v, err=%v\n", d, err)
+			return
 		}
 
-		p := filepath.Join(w.dir, d, "index.html")
-		var buf bytes.Buffer
-		tmpl.Execute(&buf, is)
 		if err := ioutil.WriteFile(p, buf.Bytes(), 0644); err != nil {
 			log.Printf("Failed to write index.html for %#v, err=%v\n", d, err)
 			return
@@ -72,36 +96,35 @@ func (w *watcher) writeIndexes() {
 
 func (w *watcher) ensureThumbs() {
 	for d, is := range w.images {
-		for i := range is {
-			matches := jpgRegexp.FindAllStringSubmatch(i, -1)
-			base, ending := matches[0][1], matches[0][2]
-			_, hasThumb := w.images[d][base+"_thumb."+ending]
-			isThumb := strings.HasSuffix(base, "_thumb")
-			if !(isThumb || hasThumb) {
-				if err := w.generateThumb(d, i); err != nil {
+		for i, id := range is {
+			if id.Thumb == "" {
+				tn, err := w.generateThumb(d, i)
+				if err != nil {
 					log.Printf("Failed to generate thumb for %#v in %#v, err=%v", i, d, err)
 					continue
 				}
+				id.ThumbPath = strings.Join([]string{"b", d, tn}, "/")
 				log.Printf("Generated thumb for %#v in %#v.", i, d)
 			}
 		}
 	}
 }
 
-func (w *watcher) generateThumb(d, n string) error {
+func (w *watcher) generateThumb(d, n string) (string, error) {
 	p := filepath.Join(w.dir, d, n)
 	ih, err := os.Open(p)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer ih.Close()
 
-	matches := jpgRegexp.FindAllStringSubmatch(n, -1)
+	matches := imageRegexp.FindAllStringSubmatch(n, -1)
 	base, ending := matches[0][1], matches[0][2]
-	tp := filepath.Join(w.dir, d, base+"_thumb."+ending)
+	tn := base + "_thumb." + ending
+	tp := filepath.Join(w.dir, d, tn)
 	th, err := os.Create(tp)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
 		th.Close()
@@ -110,13 +133,19 @@ func (w *watcher) generateThumb(d, n string) error {
 
 	img, err := jpeg.Decode(ih)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	thumb := resize.Thumbnail(200, 200, img, resize.Lanczos3)
 
-	return jpeg.Encode(th, thumb, nil)
+	return tn, jpeg.Encode(th, thumb, nil)
 }
+
+type byName []os.FileInfo
+
+func (a byName) Len() int           { return len(a) }
+func (a byName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byName) Less(i, j int) bool { return a[i].Name() < a[j].Name() }
 
 func (w *watcher) reloadContents() {
 	log.Printf("Reloading contents of %#v.", w.dir)
@@ -126,7 +155,8 @@ func (w *watcher) reloadContents() {
 		return
 	}
 
-	w.images = map[string]map[string]struct{}{}
+	w.images = map[string]map[string]*imgDetails{}
+	w.configs = map[string]dirConfig{}
 	for _, d := range ds {
 		if d.IsDir() {
 			p := filepath.Join(w.dir, d.Name())
@@ -135,17 +165,13 @@ func (w *watcher) reloadContents() {
 				log.Printf("Failed to read contents of %#v, err=%v", p, err)
 				continue
 			}
+			sort.Sort(byName(fs)) // sort so thumbs always appear after img
+
+			// find config first, to load captions
 			for _, f := range fs {
 				switch {
 				case f.IsDir() || f.Size() == 0 || time.Since(f.ModTime()) < (10*time.Second):
 					continue
-				case jpgRegexp.MatchString(f.Name()):
-					_, ok := w.images[d.Name()]
-					if ok {
-						w.images[d.Name()][f.Name()] = nada // hrm...
-					} else {
-						w.images[d.Name()] = map[string]struct{}{f.Name(): nada}
-					}
 				case dirConfigRegexp.MatchString(f.Name()):
 					fp := filepath.Join(p, f.Name())
 					byts, err := ioutil.ReadFile(fp)
@@ -153,9 +179,65 @@ func (w *watcher) reloadContents() {
 						log.Printf("Failed to read dir config %#v, err=%v", fp, err)
 						continue
 					}
-					if err = json.Unmarshal(byts, w.configs[d.Name()]); err != nil {
+					var cfg dirConfig
+					if err = json.Unmarshal(byts, &cfg); err != nil {
 						log.Printf("Failed to unmarshal dir config %#v, err=%v", fp, err)
 						continue
+					}
+					w.configs[d.Name()] = cfg
+				}
+			}
+
+			// find images and possibly thumbs
+			for _, f := range fs {
+				switch {
+				case f.IsDir() || f.Size() == 0 || time.Since(f.ModTime()) < (10*time.Second):
+					continue
+				case thumbRegexp.MatchString(f.Name()):
+					_, dirExists := w.images[d.Name()]
+					if !dirExists {
+						log.Printf("Unexpected thumb image %#v in %#v", f.Name(), d.Name())
+						continue
+					}
+					matches := thumbRegexp.FindAllStringSubmatch(f.Name(), -1)
+					base, ending := matches[0][1], matches[0][2]
+					img := base + "." + ending
+					_, imgExists := w.images[d.Name()][img]
+					if !imgExists {
+						log.Printf("Unexpected thumb image %#v in %#v", f.Name(), d.Name())
+						continue
+					}
+					w.images[d.Name()][img].Thumb = f.Name()
+					w.images[d.Name()][img].ThumbPath = strings.Join([]string{"b", d.Name(), f.Name()}, "/")
+
+				case imageRegexp.MatchString(f.Name()):
+					p := filepath.Join(w.dir, d.Name(), f.Name())
+					fh, err := os.Open(p)
+					if err != nil {
+						log.Printf("Failed to read %#v for details, err=%v", p, err)
+						continue
+					}
+					img, _, err := image.DecodeConfig(fh)
+					if err != nil {
+						log.Printf("Failed to decode %#v for details, err=%v", p, err)
+					}
+
+					var cptn string
+					cfg, cfgExists := w.configs[d.Name()]
+					if cfgExists {
+						cptn = cfg.Captions[f.Name()]
+					}
+
+					details := &imgDetails{
+						Width:   img.Width,
+						Height:  img.Height,
+						Caption: cptn,
+						Path:    strings.Join([]string{"b", d.Name(), f.Name()}, "/"),
+					}
+					if _, dirExists := w.images[d.Name()]; dirExists {
+						w.images[d.Name()][f.Name()] = details
+					} else {
+						w.images[d.Name()] = map[string]*imgDetails{f.Name(): details}
 					}
 				}
 			}
@@ -167,7 +249,7 @@ var (
 	dirIndexTempl = `<!doctype html>
 <html>
     <head>
-        <title>test album</title>
+        <title>{{.Title}}</title>
         <link rel="stylesheet" href="/a/photoswipe.css">
         <link rel="stylesheet" href="/a/default-skin/default-skin.css">
         <script src="/a/photoswipe.min.js"></script>
@@ -175,13 +257,15 @@ var (
         <style>
          body {
              font-family: Roboto, sans-serif;
-             max-width: 840px;
-             margin: 0 auto;
+             margin: 0 10pt;
          }
          h1 {
              color: #212121;
          }
-         figcaption {
+         #gallery-overview figure {
+           margin: 10px;
+         }
+         #gallery-overview figcaption {
              font-size: 9pt;
              font-weight: bold;
              text-align: center;
@@ -198,7 +282,7 @@ var (
         </style>
     </head>
     <body>
-        <h1>kitties</h1>
+        <h1>{{.Title}}</h1>
         <div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="pswp__bg"></div>
             <div class="pswp__scroll-wrap">
@@ -236,18 +320,14 @@ var (
             </div>
         </div>
         <div id="gallery-overview" class="gallery-overview">
-            {{range $ip, $tp := .}}
+            {{range .Images}}
             <figure>
-                <a href="/{{$ip}}" data-size="600x400">
-                    <img src="/{{$tp}}" width="200" />
+                <a href="/{{.Path}}" data-size="{{.Width}}x{{.Height}}">
+                    <img src="/{{.ThumbPath}}" width="200" />
                 </a>
-                <figcaption>caption  1</figcaption>
+                <figcaption>{{.Caption}}</figcaption>
             </figure>
             {{end}}
-        </div>
-        <div>
-            &nbsp;
-            <!-- footer -->
         </div>
         <script>
          var parseThumbnailElements = function(el) {
