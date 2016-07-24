@@ -20,8 +20,8 @@ func main() {
 		assetsTmpl     = `package main
 
 type asset struct {
-	contentType string
-	content     []byte
+	ContentType string
+	Content     []byte
 }
 
 var assets = map[string]asset{}
@@ -29,8 +29,8 @@ var assets = map[string]asset{}
 func init() {
 {{ range $n, $a := . }}
 	assets["{{ printf "%v" $n }}"] = asset{
-		contentType: "{{ printf "%v"  $a.ContentType }}",
-		content:     {{ printf "%#v"  $a.Content }},
+		ContentType: "{{ printf "%v"  $a.ContentType }}",
+		Content:     {{ printf "%#v"  $a.Content }},
 	}
 {{ end }}
 }
