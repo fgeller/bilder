@@ -1,0 +1,13 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "github.com/nfnt/resize",
+			"repository": "https://github.com/nfnt/resize",
+			"vcs": "git",
+			"revision": "4d93a29130b1b6aba503e2aa8b50f516213ea80e",
+			"branch": "master",
+			"notests": true
+		}
+	]
+}
