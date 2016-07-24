@@ -254,7 +254,7 @@ var (
     <head>
         <title>{{.Title}}</title>
         <link rel="stylesheet" href="/a/photoswipe.css">
-        <link rel="stylesheet" href="/a/default-skin/default-skin.css">
+        <link rel="stylesheet" href="/a/default-skin.css">
         <script src="/a/photoswipe.min.js"></script>
         <script src="/a/photoswipe-ui-default.min.js"></script>
         <style>
