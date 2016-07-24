@@ -2,6 +2,6 @@ package main
 
 func main() {
 	conf := mustParseConfig()
-	w := watcher{dir: conf.BilderDir}
-	(&w).start()
+	go (&watcher{dir: conf.BilderDir}).start()
+	(&server{dir: conf.BilderDir}).start()
 }
