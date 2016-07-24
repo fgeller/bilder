@@ -156,7 +156,6 @@ func (w *watcher) reloadContents() {
 	}
 
 	w.images = map[string]map[string]*imgDetails{}
-	w.configs = map[string]dirConfig{}
 	for _, d := range ds {
 		if d.IsDir() {
 			p := filepath.Join(w.dir, d.Name())
@@ -170,7 +169,7 @@ func (w *watcher) reloadContents() {
 			// find config first, to load captions
 			for _, f := range fs {
 				switch {
-				case f.IsDir() || f.Size() == 0 || time.Since(f.ModTime()) < (10*time.Second):
+				case f.IsDir() || f.Size() == 0 || time.Since(f.ModTime()) < (200*time.Millisecond):
 					continue
 				case dirConfigRegexp.MatchString(f.Name()):
 					fp := filepath.Join(p, f.Name())
@@ -184,7 +183,11 @@ func (w *watcher) reloadContents() {
 						log.Printf("Failed to unmarshal dir config %#v, err=%v", fp, err)
 						continue
 					}
-					w.configs[d.Name()] = cfg
+					if w.configs == nil {
+						w.configs = map[string]dirConfig{d.Name(): cfg}
+					} else {
+						w.configs[d.Name()] = cfg
+					}
 				}
 			}
 
