@@ -4,14 +4,48 @@ import (
 	"log"
 	"net/http"
 	"os"
-
-	"github.com/gorilla/handlers"
+	"path/filepath"
+	"strings"
+	"sync"
 )
 
 type server struct {
 	http.Server
-	dir       string
-	accessLog string
+	sync.RWMutex
+	albumUpdates <-chan []album
+	dir          string
+	accessLog    string
+	albums       map[string]http.Handler
+}
+
+func newServer(d, al string, au <-chan []album) *server {
+	return &server{dir: d, accessLog: al, albumUpdates: au}
+}
+
+func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "" {
+		http.Error(w, "404 page not found", 404)
+		return
+	}
+
+	sep := strings.Index(r.URL.Path, "/")
+	an := r.URL.Path
+	if sep > 0 {
+		an = r.URL.Path[:sep]
+	}
+
+	s.RLock()
+	h, ok := s.albums[an]
+	s.RUnlock()
+
+	if !ok {
+		http.Error(w, "404 page not found", 404)
+		return
+	}
+
+	p := strings.TrimPrefix(r.URL.Path, an)
+	r.URL.Path = p
+	h.ServeHTTP(w, r)
 }
 
 func assetsHandler(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +61,22 @@ func assetsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(a.Content)
 }
 
-func (s *server) start() {
+func (s *server) listenForUpdates() {
+	for as := range s.albumUpdates {
+		hs := make(map[string]http.Handler)
+		for _, a := range as {
+			hs[a.name] = http.FileServer(http.Dir(filepath.Join(s.dir, a.name)))
+		}
+
+		s.Lock()
+		s.albums = hs
+		s.Unlock()
+	}
+}
+
+func (s *server) serve() {
+	go s.listenForUpdates()
+
 	var (
 		al  *os.File
 		err error
@@ -50,15 +99,15 @@ func (s *server) start() {
 		mux.HandleFunc("/a/", assetsHandler)
 	}
 
-	if al == nil {
-		mux.Handle("/b/", http.StripPrefix("/b/", http.FileServer(http.Dir(s.dir))))
-	} else {
-		h := http.FileServer(http.Dir(s.dir))
-		h = http.StripPrefix("/b/", h)
-		h = handlers.CombinedLoggingHandler(al, h)
-		log.Printf("Enabling access log to %#v", s.accessLog)
-		mux.Handle("/b/", h)
-	}
+	mux.Handle("/b/", http.StripPrefix("/b/", s))
+	// if al == nil {
+	// } else {
+	// 	h := http.FileServer(http.Dir(s.dir))
+	// 	h = http.StripPrefix("/b/", h)
+	// 	h = handlers.CombinedLoggingHandler(al, h)
+	// 	log.Printf("Enabling access log to %#v", s.accessLog)
+	// 	mux.Handle("/b/", h)
+	// }
 	log.Printf("serving %#v\n", s.dir)
 
 	s.Addr = ":8173"

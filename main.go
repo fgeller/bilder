@@ -2,6 +2,10 @@ package main
 
 func main() {
 	conf := mustParseConfig()
-	go (&watcher{dir: conf.BilderDir, urlPathPrefix: conf.URLPathPrefix}).start()
-	(&server{dir: conf.BilderDir, accessLog: conf.AccessLog}).start()
+	albums := make(chan []album, 1)
+	w := newWatcher(conf.BilderDir, conf.URLPathPrefix, albums)
+	s := newServer(conf.BilderDir, conf.AccessLog, albums)
+
+	go w.start()
+	s.serve()
 }

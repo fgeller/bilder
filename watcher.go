@@ -34,12 +34,22 @@ type dirDetails struct {
 	Images        []*imgDetails
 }
 
+type album struct {
+	name string
+}
+
 type watcher struct {
 	dir           string
 	urlPathPrefix string
 	configs       map[string]dirConfig
 	images        map[string]map[string]*imgDetails
+	albumUpdates  chan<- []album
 }
+
+func newWatcher(d, upp string, au chan<- []album) *watcher {
+	return &watcher{dir: d, urlPathPrefix: upp, albumUpdates: au}
+}
+
 type dirConfig struct {
 	Title    string
 	Captions map[string]string
@@ -56,10 +66,25 @@ func (w *watcher) start() {
 		w.reloadContents()
 		w.ensureThumbs()
 		w.writeIndexes()
-		w.images = nil
-		w.configs = nil
+		w.passAlbumUpdates()
+		w.reset()
 		<-time.After(10 * time.Second)
 	}
+}
+
+func (w *watcher) reset() {
+	w.images = nil
+	w.configs = nil
+}
+
+func (w *watcher) passAlbumUpdates() {
+	var as []album
+	for a, is := range w.images {
+		if len(is) > 0 {
+			as = append(as, album{name: a})
+		}
+	}
+	w.albumUpdates <- as
 }
 
 type byImgName []*imgDetails
