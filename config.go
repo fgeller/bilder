@@ -8,7 +8,8 @@ import (
 )
 
 type config struct {
-	BilderDir string `json:"bilder-dir"`
+	BilderDir     string `json:"bilder-dir"`
+	URLPathPrefix string `json:"url-path-prefix"`
 }
 
 var defaultConfig = config{

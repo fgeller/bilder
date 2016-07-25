@@ -29,14 +29,16 @@ type imgDetails struct {
 }
 
 type dirDetails struct {
-	Title  string
-	Images []*imgDetails
+	URLPathPrefix string
+	Title         string
+	Images        []*imgDetails
 }
 
 type watcher struct {
-	dir     string
-	configs map[string]dirConfig
-	images  map[string]map[string]*imgDetails
+	dir           string
+	urlPathPrefix string
+	configs       map[string]dirConfig
+	images        map[string]map[string]*imgDetails
 }
 type dirConfig struct {
 	Title    string
@@ -78,8 +80,9 @@ func (w *watcher) writeIndexes() {
 			title = cfg.Title
 		}
 		dd := dirDetails{
-			Title:  title,
-			Images: ids,
+			URLPathPrefix: w.urlPathPrefix,
+			Title:         title,
+			Images:        ids,
 		}
 		var buf bytes.Buffer
 		if err := tmpl.Execute(&buf, dd); err != nil {
@@ -253,10 +256,10 @@ var (
 <html>
     <head>
         <title>{{.Title}}</title>
-        <link rel="stylesheet" href="/a/photoswipe.css">
-        <link rel="stylesheet" href="/a/default-skin.css">
-        <script src="/a/photoswipe.min.js"></script>
-        <script src="/a/photoswipe-ui-default.min.js"></script>
+        <link rel="stylesheet" href="{{.URLPathPrefix}}/a/photoswipe.css">
+        <link rel="stylesheet" href="{{.URLPathPrefix}}/a/default-skin.css">
+        <script src="{{.URLPathPrefix}}/a/photoswipe.min.js"></script>
+        <script src="{{.URLPathPrefix}}/a/photoswipe-ui-default.min.js"></script>
         <style>
          body {
              font-family: Roboto, sans-serif;
@@ -323,14 +326,14 @@ var (
             </div>
         </div>
         <div id="gallery-overview" class="gallery-overview">
-            {{range .Images}}
+{{range .Images}}
             <figure>
-                <a href="/{{.Path}}" data-size="{{.Width}}x{{.Height}}">
-                    <img src="/{{.ThumbPath}}" width="200" />
+                <a href="{{$.URLPathPrefix}}/{{.Path}}" data-size="{{.Width}}x{{.Height}}">
+                    <img src="{{$.URLPathPrefix}}/{{.ThumbPath}}" width="200" />
                 </a>
                 <figcaption>{{.Caption}}&nbsp;</figcaption>
             </figure>
-            {{end}}
+{{end}}
         </div>
         <script>
          var parseThumbnailElements = function(el) {
