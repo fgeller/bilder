@@ -2,6 +2,14 @@
 	"version": 0,
 	"dependencies": [
 		{
+			"importpath": "github.com/gorilla/handlers",
+			"repository": "https://github.com/gorilla/handlers",
+			"vcs": "git",
+			"revision": "801d6e3b008914ee888c9ab9b1b379b9a56fbf44",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/nfnt/resize",
 			"repository": "https://github.com/nfnt/resize",
 			"vcs": "git",

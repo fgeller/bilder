@@ -1,3 +1,4 @@
 {
-  "bilder-dir": "tmp"
+  "bilder-dir": "tmp",
+	"access-log": "access.log"
 }

@@ -10,6 +10,7 @@ import (
 type config struct {
 	BilderDir     string `json:"bilder-dir"`
 	URLPathPrefix string `json:"url-path-prefix"`
+	AccessLog     string `json:"access-log"`
 }
 
 var defaultConfig = config{
