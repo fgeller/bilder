@@ -7,7 +7,21 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/gorilla/handlers"
 )
+
+type syncFile struct {
+	sync.Mutex
+	os.File
+	f *os.File
+}
+
+func (sf *syncFile) Write(p []byte) (n int, err error) {
+	sf.Lock()
+	defer sf.Unlock()
+	return sf.f.Write(p)
+}
 
 type server struct {
 	http.Server
@@ -15,6 +29,7 @@ type server struct {
 	albumUpdates <-chan []album
 	dir          string
 	accessLog    string
+	logFile      *syncFile
 	albums       map[string]http.Handler
 }
 
@@ -66,6 +81,9 @@ func (s *server) listenForUpdates() {
 		hs := make(map[string]http.Handler)
 		for _, a := range as {
 			hs[a.name] = http.FileServer(http.Dir(filepath.Join(s.dir, a.name)))
+			if s.logFile != nil {
+				hs[a.name] = handlers.CombinedLoggingHandler(s.logFile, hs[a.name])
+			}
 		}
 
 		s.Lock()
@@ -77,16 +95,13 @@ func (s *server) listenForUpdates() {
 func (s *server) serve() {
 	go s.listenForUpdates()
 
-	var (
-		al  *os.File
-		err error
-	)
 	if s.accessLog != "" {
-		al, err = os.OpenFile(s.accessLog, os.O_WRONLY|os.O_CREATE, 0644)
+		lf, err := os.OpenFile(s.accessLog, os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			log.Printf("Cannot open access log %#v with write access, err=%v", s.accessLog, err)
 		} else {
-			defer al.Close()
+			s.logFile = &syncFile{f: lf}
+			defer lf.Close()
 		}
 	}
 
@@ -100,14 +115,6 @@ func (s *server) serve() {
 	}
 
 	mux.Handle("/b/", http.StripPrefix("/b/", s))
-	// if al == nil {
-	// } else {
-	// 	h := http.FileServer(http.Dir(s.dir))
-	// 	h = http.StripPrefix("/b/", h)
-	// 	h = handlers.CombinedLoggingHandler(al, h)
-	// 	log.Printf("Enabling access log to %#v", s.accessLog)
-	// 	mux.Handle("/b/", h)
-	// }
 	log.Printf("serving %#v\n", s.dir)
 
 	s.Addr = ":8173"
