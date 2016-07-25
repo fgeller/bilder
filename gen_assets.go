@@ -81,6 +81,8 @@ func detectContentType(n string) string {
 		return "application/javascript"
 	case strings.HasSuffix(n, ".html"):
 		return "text/html; charset=utf-8"
+	case strings.HasSuffix(n, ".svg"):
+		return "image/svg+xml"
 	default:
 		return "application/octet-stream"
 	}
