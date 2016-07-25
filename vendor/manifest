@@ -16,6 +16,14 @@
 			"revision": "4d93a29130b1b6aba503e2aa8b50f516213ea80e",
 			"branch": "master",
 			"notests": true
+		},
+		{
+			"importpath": "github.com/satori/go.uuid",
+			"repository": "https://github.com/satori/go.uuid",
+			"vcs": "git",
+			"revision": "0aa62d5ddceb50dbcb909d790b5345affd3669b6",
+			"branch": "master",
+			"notests": true
 		}
 	]
 }
