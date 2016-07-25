@@ -1,12 +1,12 @@
 package main
 
 import (
-	"html/template"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 )
 
 type asset struct {
@@ -28,8 +28,8 @@ var assets = map[string]asset{}
 
 func init() {
 {{ range $n, $a := . }}
-	assets["{{ printf "%v" $n }}"] = asset{
-		ContentType: "{{ printf "%v"  $a.ContentType }}",
+	assets[{{ printf "%q" $n }}] = asset{
+		ContentType: {{ printf "%q" $a.ContentType }},
 		Content:     {{ printf "%#v"  $a.Content }},
 	}
 {{ end }}
