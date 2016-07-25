@@ -9,6 +9,12 @@ import (
 	"sync"
 
 	"github.com/gorilla/handlers"
+	uuid "github.com/satori/go.uuid"
+)
+
+var (
+	cookieBaseName = "session-a2bb9-"
+	nada           = struct{}{}
 )
 
 type syncFile struct {
@@ -30,7 +36,7 @@ type server struct {
 	dir          string
 	accessLog    string
 	logFile      *syncFile
-	albums       map[string]http.Handler
+	albums       map[string]authHandler
 }
 
 func newServer(d, al string, au <-chan []album) *server {
@@ -76,14 +82,78 @@ func assetsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(a.Content)
 }
 
+type authHandler struct {
+	sync.Mutex
+	handler     http.Handler
+	name        string
+	user, pass  string
+	sessions    map[string]struct{}
+	authEnabled bool
+}
+
+func (h authHandler) isAuthed(sid string) bool {
+	h.Lock()
+	_, ok := h.sessions[sid]
+	h.Unlock()
+	return ok
+}
+
+func (h authHandler) newSession() string {
+	sid := uuid.NewV1().String()
+	h.Lock()
+	h.sessions[sid] = nada
+	h.Unlock()
+	return sid
+}
+
+func (h authHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !h.authEnabled {
+		h.handler.ServeHTTP(w, r)
+		return
+	}
+
+	cookie, err := r.Cookie(cookieBaseName + h.name)
+	if err == nil && cookie != nil && h.isAuthed(cookie.Value) {
+		h.handler.ServeHTTP(w, r)
+		return
+	}
+
+	u, p, ok := r.BasicAuth()
+	if !(ok && u == h.user && p == h.pass) {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"Authorization Required\"")
+		http.Error(w, "Not Authorized", http.StatusUnauthorized)
+		return
+	}
+
+	sid := h.newSession()
+	http.SetCookie(w, &http.Cookie{Name: cookieBaseName + h.name, Value: sid, MaxAge: 0})
+	h.handler.ServeHTTP(w, r)
+}
+
 func (s *server) listenForUpdates() {
 	for as := range s.albumUpdates {
-		hs := make(map[string]http.Handler)
+		s.RLock()
+		oldHandlers := s.albums
+		s.RUnlock()
+		hs := make(map[string]authHandler)
 		for _, a := range as {
-			hs[a.name] = http.FileServer(http.Dir(filepath.Join(s.dir, a.name)))
-			if s.logFile != nil {
-				hs[a.name] = handlers.CombinedLoggingHandler(s.logFile, hs[a.name])
+			oh, oldExists := oldHandlers[a.name]
+			sess := map[string]struct{}{}
+			if oldExists {
+				sess = oh.sessions
 			}
+			h := authHandler{
+				handler:     http.FileServer(http.Dir(filepath.Join(s.dir, a.name))),
+				name:        a.name,
+				user:        a.user,
+				pass:        a.pass,
+				sessions:    sess,
+				authEnabled: a.hasAuth(),
+			}
+			if s.logFile != nil {
+				h.handler = handlers.CombinedLoggingHandler(s.logFile, h.handler)
+			}
+			hs[a.name] = h
 		}
 
 		s.Lock()
@@ -115,7 +185,6 @@ func (s *server) serve() {
 	}
 
 	mux.Handle("/b/", http.StripPrefix("/b/", s))
-	log.Printf("serving %#v\n", s.dir)
 
 	s.Addr = ":8173"
 	s.Handler = mux

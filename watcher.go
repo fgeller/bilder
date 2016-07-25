@@ -35,7 +35,12 @@ type dirDetails struct {
 }
 
 type album struct {
-	name string
+	name       string
+	user, pass string
+}
+
+func (a album) hasAuth() bool {
+	return len(a.user) > 0 && len(a.pass) > 0
 }
 
 type watcher struct {
@@ -51,8 +56,9 @@ func newWatcher(d, upp string, au chan<- []album) *watcher {
 }
 
 type dirConfig struct {
-	Title    string
-	Captions map[string]string
+	Title      string
+	Captions   map[string]string
+	User, Pass string
 }
 
 var (
@@ -81,7 +87,13 @@ func (w *watcher) passAlbumUpdates() {
 	var as []album
 	for a, is := range w.images {
 		if len(is) > 0 {
-			as = append(as, album{name: a})
+			var u, p string
+			dc, ok := w.configs[a]
+			if ok {
+				u = dc.User
+				p = dc.Pass
+			}
+			as = append(as, album{name: a, user: u, pass: p})
 		}
 	}
 	w.albumUpdates <- as
