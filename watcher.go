@@ -56,6 +56,8 @@ func (w *watcher) start() {
 		w.reloadContents()
 		w.ensureThumbs()
 		w.writeIndexes()
+		w.images = nil
+		w.configs = nil
 		<-time.After(10 * time.Second)
 	}
 }
@@ -158,7 +160,6 @@ func (w *watcher) reloadContents() {
 		return
 	}
 
-	w.images = map[string]map[string]*imgDetails{}
 	for _, d := range ds {
 		if d.IsDir() {
 			p := filepath.Join(w.dir, d.Name())
@@ -200,11 +201,17 @@ func (w *watcher) reloadContents() {
 				case f.IsDir() || f.Size() == 0 || time.Since(f.ModTime()) < (10*time.Second):
 					continue
 				case thumbRegexp.MatchString(f.Name()):
+					if w.images == nil {
+						log.Printf("Unexpected thumb image %#v in %#v", f.Name(), d.Name())
+						continue
+					}
+
 					_, dirExists := w.images[d.Name()]
 					if !dirExists {
 						log.Printf("Unexpected thumb image %#v in %#v", f.Name(), d.Name())
 						continue
 					}
+
 					matches := thumbRegexp.FindAllStringSubmatch(f.Name(), -1)
 					base, ending := matches[0][1], matches[0][2]
 					img := base + "." + ending
@@ -213,6 +220,7 @@ func (w *watcher) reloadContents() {
 						log.Printf("Unexpected thumb image %#v in %#v", f.Name(), d.Name())
 						continue
 					}
+
 					w.images[d.Name()][img].Thumb = f.Name()
 					w.images[d.Name()][img].ThumbPath = strings.Join([]string{"b", d.Name(), f.Name()}, "/")
 
@@ -223,6 +231,7 @@ func (w *watcher) reloadContents() {
 						log.Printf("Failed to read %#v for details, err=%v", p, err)
 						continue
 					}
+
 					img, _, err := image.DecodeConfig(fh)
 					if err != nil {
 						log.Printf("Failed to decode %#v for details, err=%v", p, err)
@@ -240,11 +249,18 @@ func (w *watcher) reloadContents() {
 						Caption: cptn,
 						Path:    strings.Join([]string{"b", d.Name(), f.Name()}, "/"),
 					}
+
+					if w.images == nil {
+						w.images = map[string]map[string]*imgDetails{d.Name(): {f.Name(): details}}
+						continue
+					}
+
 					if _, dirExists := w.images[d.Name()]; dirExists {
 						w.images[d.Name()][f.Name()] = details
-					} else {
-						w.images[d.Name()] = map[string]*imgDetails{f.Name(): details}
+						continue
 					}
+
+					w.images[d.Name()] = map[string]*imgDetails{f.Name(): details}
 				}
 			}
 		}
