@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"image"
 	"image/jpeg"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"github.com/nfnt/resize"
+	"github.com/oliamb/cutter"
 )
 
 type imgDetails struct {
@@ -170,7 +170,7 @@ func (w *watcher) generateThumb(d, n string) (string, error) {
 	}
 	defer func() {
 		th.Close()
-		fmt.Printf("Writing thumb to %v\n", tp)
+		log.Printf("Writing thumb to %v\n", tp)
 	}()
 
 	img, err := jpeg.Decode(ih)
@@ -178,9 +178,32 @@ func (w *watcher) generateThumb(d, n string) (string, error) {
 		return "", err
 	}
 
-	thumb := resize.Thumbnail(200, 200, img, resize.Lanczos3)
+	imgConf, _, err := image.DecodeConfig(ih)
+	if err != nil && err != image.ErrFormat {
+		log.Printf("Failed to decode config from %#v, err=%v", p, err)
+	}
 
-	return tn, jpeg.Encode(th, thumb, nil)
+	var isPortrait bool
+	if imgConf.Width > imgConf.Height {
+		isPortrait = true
+	}
+
+	var resized image.Image
+	if isPortrait {
+		resized = resize.Resize(200, 0, img, resize.Lanczos3)
+	} else {
+		resized = resize.Resize(0, 200, img, resize.Lanczos3)
+	}
+
+	square, err := cutter.Crop(
+		resized,
+		cutter.Config{Width: 200, Height: 200, Mode: cutter.Centered},
+	)
+	if err != nil {
+		log.Printf("Failed to crop thumb for %#v, err=%v", p, err)
+	}
+
+	return tn, jpeg.Encode(th, square, nil)
 }
 
 type byName []os.FileInfo
@@ -309,6 +332,8 @@ var (
 <html>
     <head>
         <title>{{.Title}}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css?family=Raleway:100" rel="stylesheet">
         <link rel="stylesheet" href="{{.URLPathPrefix}}/a/photoswipe.css">
         <link rel="stylesheet" href="{{.URLPathPrefix}}/a/default-skin.css">
         <script src="{{.URLPathPrefix}}/a/photoswipe.min.js"></script>
@@ -316,27 +341,33 @@ var (
         <style>
          body {
              font-family: Roboto, sans-serif;
-             margin: 0 10pt;
+             background-color: #000;
+             margin: 0;
          }
          h1 {
-             color: #212121;
+             color: #fff;
+             margin: 0 0 20pt 0;
+             padding: 10pt 10pt 3pt 10pt;
+             text-align: right;
+             font-family: Raleway, sans-serif;
          }
          #gallery-overview figure {
-           margin: 10px;
+             margin: 0px;
+             max-width: 200px;
+         }
+         #gallery-overview figure a {
+             display: flex;
          }
          #gallery-overview figcaption {
              font-size: 9pt;
              font-weight: bold;
              text-align: center;
+             display: none;
          }
          #gallery-overview {
              display: flex;
              flex-wrap: wrap;
              justify-content: center;
-             align-items: center;
-             background-color: #212121;
-             color: #fafafa;
-             border-radius: 3pt;
          }
         </style>
     </head>
@@ -380,12 +411,10 @@ var (
         </div>
         <div id="gallery-overview" class="gallery-overview">
 {{range .Images}}
-            <figure>
-                <a href="{{$.URLPathPrefix}}/{{.Path}}" data-size="{{.Width}}x{{.Height}}">
-                    <img src="{{$.URLPathPrefix}}/{{.ThumbPath}}" width="200" />
-                </a>
-                <figcaption>{{.Caption}}&nbsp;</figcaption>
-            </figure>
+          <figure>
+            <a href="{{$.URLPathPrefix}}/{{.Path}}" data-size="{{.Width}}x{{.Height}}"><img src="{{$.URLPathPrefix}}/{{.ThumbPath}}" width="200" /></a>
+            <figcaption>{{.Caption}}&nbsp;</figcaption>
+          </figure>
 {{end}}
         </div>
         <script>
@@ -500,15 +529,12 @@ var (
              items = parseThumbnailElements(galleryElement);
              options = {
                  galleryUID: galleryElement.getAttribute('data-pswp-uid'),
-                 getThumbBoundsFn: function(index) {
-                     var thumbnail = items[index].el.getElementsByTagName('img')[0],
-                         pageYScroll = window.pageYOffset || document.documentElement.scrollTop,
-                         rect = thumbnail.getBoundingClientRect();
-                     return {x:rect.left, y:rect.top + pageYScroll, w:rect.width};
-                 },
                  shareButtons: [
                      {id:'download', label:'Download image', url:'{{"{{"}}raw_image_url{{"}}"}}', download:true}
-                 ]
+                 ],
+                 showHideOpacity: false,
+                 showAnimationDuration: 0,
+                 hideAnimationDuration: 0
              };
 
              if(fromURL) {
