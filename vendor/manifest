@@ -18,6 +18,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/oliamb/cutter",
+			"repository": "https://github.com/oliamb/cutter",
+			"vcs": "git",
+			"revision": "6bb26911f52436bb5c63667f9aaa2d1826b2df9e",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/satori/go.uuid",
 			"repository": "https://github.com/satori/go.uuid",
 			"vcs": "git",
