@@ -178,13 +178,17 @@ func (w *watcher) generateThumb(d, n string) (string, error) {
 		return "", err
 	}
 
+	if _, err := ih.Seek(0, 0); err != nil {
+		log.Printf("Failed to reset reader for %#v, err=%v", p, err)
+	}
+
 	imgConf, _, err := image.DecodeConfig(ih)
-	if err != nil && err != image.ErrFormat {
+	if err != nil {
 		log.Printf("Failed to decode config from %#v, err=%v", p, err)
 	}
 
 	var isPortrait bool
-	if imgConf.Width > imgConf.Height {
+	if imgConf.Width < imgConf.Height {
 		isPortrait = true
 	}
 
