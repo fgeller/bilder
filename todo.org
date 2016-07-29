@@ -1,2 +1,0 @@
- - [ ] album overview index.html
- - [ ] auth
