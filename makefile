@@ -9,11 +9,16 @@ build: GOARCH ?= amd64
 build: clean
 	GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 go build -o ${ARTIFACT} -a *.go
 
+release: GOOS ?= ${OS}
+release: GOARCH ?= amd64
+release: build
+	tar Jcf ${ARTIFACT}-`git rev-parse HEAD | cut -c-7`-${GOOS}-${GOARCH}.xz ${ARTIFACT}
+
 linux-release:
-	GOOS=linux $(MAKE) build
+	GOOS=linux $(MAKE) release
 
 darwin-release:
-	GOOS=darwin $(MAKE) build
+	GOOS=darwin $(MAKE) release
 
 releases: linux-release darwin-release
 
