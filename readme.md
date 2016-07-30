@@ -1,8 +1,8 @@
 # bilder - web app to host photo albums.
 
-**bilder** is a web app that monitors a given directory for albums and serves them dynamically.
-It also generates thumbnail automatically.
-There's a live demo available [here](https://geller.io/bilder/b/kitties) and here's a quick screenshot:
+**bilder** is a web app that monitors a directory for albums and serves them dynamically.
+It also generates thumbnails automatically.
+There's a live demo [here](https://geller.io/bilder/b/kitties) and here's a quick screenshot:
 
 ![bilder screenshot](screenshot.png)
 
@@ -11,13 +11,13 @@ There's a live demo available [here](https://geller.io/bilder/b/kitties) and her
 You can configure **bilder** via an optional JSON file. You can pass its location to **bilder** on startup:
 
 ```
-$ bilder -config /path/to/your/bilder.json
+$ bilder -config /path/to/your/config.json
 ```
 
 It currently supports the following options:
 
  + `port` *default:* `8173`: This is the port that **bilder** will serve on.
- + `url-path-prefix` *default:* `""`: This is a prefix that can be added to the assets' paths that are loaded from the browser. This allows running **bilder** behind a proxy like nginx that can terminate the HTTPS connection. Consider the path of the demo linked above: [https://geller.io/bilder/b/kitties](https://geller.io/bilder/b/kitties). In this case nginx proxy passes to **bilder** under the `/bilder` path:
+ + `url-path-prefix` *default:* `""`: This is a prefix that can be added to the assets' paths that are loaded from the browser. This allows **bilder** to run behind a proxy like nginx (e.g. if you want to use nginx to  terminate the HTTPS connection). Consider the path of the demo linked above: [https://geller.io/bilder/b/kitties](https://geller.io/bilder/b/kitties). In this case nginx proxy passes to **bilder** under the `/bilder` path which we would set `url-path-prefix` to:
 ```
 location /bilder/ {
     proxy_pass http://localhost:8173/;
@@ -40,11 +40,14 @@ This is the JSON file that is used for the [demo](https://geller.io/bilder/b/kit
 
 ### Albums
 
-Each sub-directory of the `bilder-dir` directory is considered an album if it contains JPG images. You can add more information about the album by adding a `bilder.json` to the directory. It currently supports the following options:
+Each sub-directory of the `bilder-dir` directory is considered an album if it contains JPG images.
+Only JPG images are currently supported.
+You can add more information about the album by adding a `bilder.json` to the directory.
+It currently supports the following options:
 
  + `user` *default:* `""`, `pass` *default:* `""`: If both are non-empty strings, **bilder** will use them as credentials to enable basic authentication for this album.
  + `title` *default:* `""`: Title that should be set for the album, defaults to the directory name.
- + `captions` *default:* `null`: Map object from filename to caption string (consider the demo example below).
+ + `captions` *default:* `null`: Map object from file name to caption string (consider the demo example below).
 
 This is the `bilder.json` file in the `kitties` directory of the [demo](https://geller.io/bilder/b/kitties):
 ```
@@ -60,7 +63,7 @@ This is the `bilder.json` file in the `kitties` directory of the [demo](https://
 
 ## Credits
 
-All images in the [demo](https://geller.io/bilder/b/kitties) are free images from [pixabay](https://pixabay.com/).
+All images in the demos are free images from [pixabay](https://pixabay.com/).
 
 **bilder** uses the following libraries:
 
