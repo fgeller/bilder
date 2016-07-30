@@ -17,7 +17,7 @@ type config struct {
 
 var defaultConfig = config{
 	BilderDir:          "bilder",
-	Addr:               ":8173",
+	Addr:               "0.0.0.0:8173",
 	ReloadDelaySeconds: 10,
 }
 
