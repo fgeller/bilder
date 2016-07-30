@@ -1,6 +1,8 @@
 # bilder - web app to host photo albums.
 
-**bilder** is a standalone webserver on port 8173. It monitors a given directory for albums and serves them dynamically, including thumbnail generation. There's a live demo available [here](https://geller.io/bilder/b/kitties) and here's a quick screenshot:
+**bilder** is a web app that monitors a given directory for albums and serves them dynamically.
+It also generates thumbnail automatically.
+There's a live demo available [here](https://geller.io/bilder/b/kitties) and here's a quick screenshot:
 
 ![bilder screenshot](screenshot.png)
 
@@ -14,22 +16,21 @@ $ bilder -config /path/to/your/bilder.json
 
 It currently supports the following options:
 
- + `url-path-prefix` *default:* `""`: This is a prefix that can be added to the assets' paths that are loaded from the browser. This allows running **bilder** behind a proxy like nginx that can terminate the HTTPS connection. Consider the path of the demo linked above: [https://geller.io/bilder/b/kitties](https://geller.io/bilder/b/kitties). In this case nginx proxy passes to the **bilder** process under the `/bilder` location:
+ + `port` *default:* `8173`: This is the port that **bilder** will serve on.
+ + `url-path-prefix` *default:* `""`: This is a prefix that can be added to the assets' paths that are loaded from the browser. This allows running **bilder** behind a proxy like nginx that can terminate the HTTPS connection. Consider the path of the demo linked above: [https://geller.io/bilder/b/kitties](https://geller.io/bilder/b/kitties). In this case nginx proxy passes to **bilder** under the `/bilder` path:
 ```
 location /bilder/ {
     proxy_pass http://localhost:8173/;
 }
 ```
- + `bilder-dir` *default:* `"bilder"`: This is the path of the folder that **bilder** scans for album directories. For example, this directory would contain a single album `kitties` (Please note that `index.html` and `*_thumb.jpg` are generated automatically by **bilder**. For details about the contained `bilder.json` consider the next section on [Albums](https://github.com/fgeller/bilder#albums)):
+ + `bilder-dir` *default:* `"bilder"`: This is the path of the folder that **bilder** scans for album directories. In the following example, this directory would contain a single album `kitties`:
 ```
 $ find bilder
 bilder
 bilder/kitties
-bilder/kitties/400.jpeg
-bilder/kitties/400_thumb.jpeg
-bilder/kitties/bilder.json
-bilder/kitties/index.html
+bilder/kitties/happy.jpg
 ```
+ + `reload-delay-seconds` *default:* `10`: The time in seconds to wait between scans of `bilder-dir`.
  + `access-log` *default:* `""`: When set to a file name, **bilder** logs requests against the `/b` path in combined log format to the set file.
 
 This is the JSON file that is used for the [demo](https://geller.io/bilder/b/kitties):
@@ -44,7 +45,7 @@ Each sub-directory of the `bilder-dir` directory is considered an album if it co
  + `user` *default:* `""`, `pass` *default:* `""`: If both are non-empty strings, **bilder** will use them as credentials to enable basic authentication for this album.
  + `title` *default:* `""`: Title that should be set for the album, defaults to the directory name.
  + `captions` *default:* `null`: Map object from filename to caption string (consider the demo example below).
- 
+
 This is the `bilder.json` file in the `kitties` directory of the [demo](https://geller.io/bilder/b/kitties):
 ```
 {
