@@ -1,8 +1,6 @@
 # bilder - web app to host photo albums.
 
-There's a demo available [here](https://geller.io/bilder/b/kitties).
-
-**bilder** comes as a standalone webserver
+**bilder** is a standalone webserver on port 8173. It monitors a given directory for albums and serves them dynamically, including thumbnail generation. There's a live demo available [here](https://geller.io/bilder/b/kitties).
 
 ## Configuration
 
