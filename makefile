@@ -7,9 +7,15 @@ all: dev
 build: GOOS ?= ${OS}
 build: GOARCH ?= amd64
 build: clean
-	GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 go build -o ${ARTIFACT} -a !(gen_assets*).go
+	GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 go build -o ${ARTIFACT} -a *.go
 
-release: assets build
+linux-release:
+	GOOS=linux $(MAKE) build
+
+darwin-release:
+	GOOS=darwin $(MAKE) build
+
+releases: linux-release darwin-release
 
 run:
 	./${ARTIFACT} -config config.json
@@ -17,16 +23,9 @@ run:
 clean:
 	rm -f ${ARTIFACT}
 
-dev: test build
+dev: build
 	./${ARTIFACT} -config config.json
 
 .PHONY: assets
 assets:
-	go run gen_assets.go
-
-.PHONY: test
-test:
-	go test !(gen_assets*).go |& tee quickfix
-
-test-loop:
-	ls !(gen_assets*).go | entr bash -O extglob -c 'go test !(gen_assets*).go |& tee quickfix'
+	go run tools/gen_assets.go
