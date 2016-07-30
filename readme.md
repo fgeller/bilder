@@ -18,7 +18,7 @@ location /bilder/ {
     proxy_pass http://localhost:8173/;
 }
 ```
- + `bilder-dir` *default:* `"bilder"`: This is the path of the folder that **bilder** scans for album directories. For example, this directory would contain a single album `kitties` (Please note that `index.html` and `*_thumb.jpg` are generated automatically by **bilder**. For details about the contained `bilder.json` consider the next section on [Albums](https://github.com/fgeller/bilder#Albums)):
+ + `bilder-dir` *default:* `"bilder"`: This is the path of the folder that **bilder** scans for album directories. For example, this directory would contain a single album `kitties` (Please note that `index.html` and `*_thumb.jpg` are generated automatically by **bilder**. For details about the contained `bilder.json` consider the next section on [Albums](https://github.com/fgeller/bilder#albums)):
 ```
 $ find bilder
 bilder
