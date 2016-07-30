@@ -8,13 +8,17 @@ import (
 )
 
 type config struct {
-	BilderDir     string `json:"bilder-dir"`
-	URLPathPrefix string `json:"url-path-prefix"`
-	AccessLog     string `json:"access-log"`
+	BilderDir          string `json:"bilder-dir"`
+	URLPathPrefix      string `json:"url-path-prefix"`
+	AccessLog          string `json:"access-log"`
+	Addr               string `json:"addr"`
+	ReloadDelaySeconds int    `json:"reload-delay-seconds"`
 }
 
 var defaultConfig = config{
-	BilderDir: "bilder",
+	BilderDir:          "bilder",
+	Addr:               ":8173",
+	ReloadDelaySeconds: 10,
 }
 
 func mustParseConfig() config {
@@ -37,6 +41,14 @@ func mustParseConfig() config {
 
 	if c.BilderDir == "" {
 		c.BilderDir = defaultConfig.BilderDir
+	}
+
+	if c.Addr == "" {
+		c.Addr = defaultConfig.Addr
+	}
+
+	if c.ReloadDelaySeconds == 0 {
+		c.ReloadDelaySeconds = defaultConfig.ReloadDelaySeconds
 	}
 
 	return c

@@ -45,14 +45,15 @@ func (a album) hasAuth() bool {
 
 type watcher struct {
 	dir           string
+	delaySeconds  int
 	urlPathPrefix string
 	configs       map[string]dirConfig
 	images        map[string]map[string]*imgDetails
 	albumUpdates  chan<- []album
 }
 
-func newWatcher(d, upp string, au chan<- []album) *watcher {
-	return &watcher{dir: d, urlPathPrefix: upp, albumUpdates: au}
+func newWatcher(ds int, d, upp string, au chan<- []album) *watcher {
+	return &watcher{delaySeconds: ds, dir: d, urlPathPrefix: upp, albumUpdates: au}
 }
 
 type dirConfig struct {
@@ -74,7 +75,7 @@ func (w *watcher) start() {
 		w.writeIndexes()
 		w.passAlbumUpdates()
 		w.reset()
-		<-time.After(10 * time.Second)
+		<-time.After(time.Duration(w.delaySeconds) * time.Second)
 	}
 }
 

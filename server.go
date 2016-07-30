@@ -32,6 +32,7 @@ func (sf *syncFile) Write(p []byte) (n int, err error) {
 type server struct {
 	http.Server
 	sync.RWMutex
+	addr         string
 	albumUpdates <-chan []album
 	dir          string
 	accessLog    string
@@ -39,8 +40,8 @@ type server struct {
 	albums       map[string]authHandler
 }
 
-func newServer(d, al string, au <-chan []album) *server {
-	return &server{dir: d, accessLog: al, albumUpdates: au}
+func newServer(ad, d, al string, au <-chan []album) *server {
+	return &server{addr: ad, dir: d, accessLog: al, albumUpdates: au}
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -186,9 +187,9 @@ func (s *server) serve() {
 
 	mux.Handle("/b/", http.StripPrefix("/b/", s))
 
-	s.Addr = ":8173"
+	s.Addr = s.addr
 	s.Handler = mux
 
-	log.Printf("Serving on http://0.0.0.0:8173")
+	log.Printf("Serving on http://" + s.addr)
 	log.Fatal(s.ListenAndServe())
 }
