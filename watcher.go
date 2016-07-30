@@ -147,7 +147,6 @@ func (w *watcher) ensureThumbs() {
 					continue
 				}
 				id.ThumbPath = strings.Join([]string{"b", d, tn}, "/")
-				log.Printf("Generated thumb for %#v in %#v.", i, d)
 			}
 		}
 	}
@@ -170,8 +169,9 @@ func (w *watcher) generateThumb(d, n string) (string, error) {
 		return "", err
 	}
 	defer func() {
+		th.Sync()
 		th.Close()
-		log.Printf("Writing thumb to %v\n", tp)
+		log.Printf("Generated thumb %v\n", tp)
 	}()
 
 	img, err := jpeg.Decode(ih)
@@ -238,7 +238,7 @@ func (w *watcher) reloadContents() {
 			// find config first, to load captions
 			for _, f := range fs {
 				switch {
-				case f.IsDir() || f.Size() == 0 || time.Since(f.ModTime()) < (200*time.Millisecond):
+				case f.IsDir() || f.Size() == 0:
 					continue
 				case dirConfigRegexp.MatchString(f.Name()):
 					fp := filepath.Join(p, f.Name())
@@ -263,7 +263,7 @@ func (w *watcher) reloadContents() {
 			// find images and possibly thumbs
 			for _, f := range fs {
 				switch {
-				case f.IsDir() || f.Size() == 0 || time.Since(f.ModTime()) < (10*time.Second):
+				case f.IsDir() || f.Size() == 0:
 					continue
 				case thumbRegexp.MatchString(f.Name()):
 					if w.images == nil {
