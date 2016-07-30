@@ -2,9 +2,16 @@
 
 **bilder** is a web app that monitors a directory for albums and serves them dynamically.
 It also generates thumbnails automatically.
-There's a live demo [here](https://geller.io/bilder/b/kitties) and here's a quick screenshot:
 
-![bilder screenshot](screenshot.png)
+[Here](https://geller.io/bilder/b/kitties)'s a live demo to click around.
+
+A screenshot:
+
+![bilder demo](screenshot.png)
+
+A screencast:
+
+![bilder demo](demo.gif)
 
 ## Configuration
 
