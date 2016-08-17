@@ -1,9 +1,10 @@
 # bilder - web app to host photo albums.
 
-bilder
- - finds albums and reloads their configuration and contents dynamically,
- - generates thumbnails automatically,
- - supports basic auth settings per album.
+ - Albums are directories with JPEG images that can be managed via rsync/scp.
+ - It finds new albums and reloads their configuration and contents dynamically.
+ - Thumbnails are generated automatically (filename_thumb.jpg).
+ - Basic auth can be enabled per album.
+ - Comes as a single binary.
 
 You can either download a [release](https://github.com/fgeller/bilder/releases) or get it via
 
