@@ -64,6 +64,7 @@ It currently supports the following options:
  + `user` *default:* `""`, `pass` *default:* `""`: If both are non-empty strings, bilder will use them as credentials to enable basic authentication for this album.
  + `title` *default:* `""`: Title that should be set for the album, defaults to the directory name.
  + `captions` *default:* `null`: Map object from file name to caption string (consider the demo example below).
+ + `sort-order` *default:* `""`: Identifies sort order for images, supported: `ModTime` (newest first), `Name` (by file name, default).
 
 This is the `bilder.json` file in the `kitties` directory of the [demo](https://geller.io/bilder/b/kitties):
 ```

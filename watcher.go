@@ -26,6 +26,7 @@ type imgDetails struct {
 	Caption   string
 	Path      string
 	ThumbPath string
+	ModTime   time.Time
 }
 
 type dirDetails struct {
@@ -60,6 +61,7 @@ type dirConfig struct {
 	Title      string
 	Captions   map[string]string
 	User, Pass string
+	SortOrder  string `json:"sort-order"`
 }
 
 var (
@@ -106,6 +108,12 @@ func (a byImgName) Len() int           { return len(a) }
 func (a byImgName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byImgName) Less(i, j int) bool { return a[i].Path < a[j].Path }
 
+type byImgModTime []*imgDetails
+
+func (a byImgModTime) Len() int           { return len(a) }
+func (a byImgModTime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byImgModTime) Less(i, j int) bool { return a[i].ModTime.Unix() > a[j].ModTime.Unix() }
+
 func (w *watcher) writeIndexes() {
 	tmpl := template.Must(template.New("dirIndex").Parse(dirIndexTempl))
 	for d, is := range w.images {
@@ -114,11 +122,17 @@ func (w *watcher) writeIndexes() {
 		for _, id := range is {
 			ids = append(ids, id)
 		}
-		sort.Sort(byImgName(ids))
 		title := d
 		if cfg, exists := w.configs[d]; exists && cfg.Title != "" {
 			title = cfg.Title
 		}
+
+		if cfg, exists := w.configs[d]; exists && cfg.SortOrder == "ModTime" {
+			sort.Sort(byImgModTime(ids))
+		} else {
+			sort.Sort(byImgName(ids))
+		}
+
 		dd := dirDetails{
 			URLPathPrefix: w.urlPathPrefix,
 			Title:         title,
@@ -307,12 +321,12 @@ func (w *watcher) reloadContents() {
 					if cfgExists {
 						cptn = cfg.Captions[f.Name()]
 					}
-
 					details := &imgDetails{
 						Width:   img.Width,
 						Height:  img.Height,
 						Caption: cptn,
 						Path:    strings.Join([]string{"b", d.Name(), f.Name()}, "/"),
+						ModTime: f.ModTime(),
 					}
 
 					if w.images == nil {
