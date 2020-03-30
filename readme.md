@@ -12,7 +12,7 @@ You can either download a [release](https://github.com/fgeller/bilder/releases) 
 $ go get github.com/fgeller/bilder
 ```
 
-[Here](https://geller.io/bilder/b/kitties)'s a live demo to click around.
+[Here](https://felix.geller.io/bilder/b/kitties)'s a live demo to click around.
 
 A screenshot:
 
