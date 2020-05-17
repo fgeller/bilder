@@ -32,7 +32,7 @@ $ bilder -config /path/to/your/config.json
 
 It currently supports the following options:
 
- + `port` *default:* `8173`: This is the port that bilder will serve on.
+ + `addr` *default:* `0.0.0.0:8173`: This is the address that bilder will serve on.
  + `url-path-prefix` *default:* `""`: This is a prefix that can be added to the assets' paths that are loaded from the browser. This allows bilder to run behind a proxy like nginx (e.g. if you want to use nginx to  terminate the HTTPS connection). Consider the path of the demo linked above: [https://geller.io/bilder/b/kitties](https://geller.io/bilder/b/kitties). In this case nginx proxy passes to bilder under the `/bilder` path which we would set `url-path-prefix` to:
 ```
 location /bilder/ {
@@ -51,7 +51,7 @@ bilder/kitties/happy.jpg
 
 This is the JSON file that is used for the [demo](https://geller.io/bilder/b/kitties):
 ```
-{ "bilder-dir": "/home/fgeller/var/bilder", "url-path-prefix": "/bilder" }
+{ "bilder-dir": "/home/fgeller/var/bilder", "url-path-prefix": "/bilder", "addr": "0.0.0.0:8173" }
 ```
 
 ### Albums
